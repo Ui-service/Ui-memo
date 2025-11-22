@@ -974,10 +974,8 @@
         const px = parseInt(val, 10);
         if (!px) return;
 
-        // 우선 브라우저 기본 fontSize 명령(1~7단계)을 사용
         document.execCommand("fontSize", false, "7"); // 임시로 7단계 사용
 
-        // editor 안에서 size="7"인 font 태그 찾아서 px로 바꾸기
         const fonts = editor.querySelectorAll("font[size='7']");
         fonts.forEach((el) => {
           el.removeAttribute("size");
@@ -985,7 +983,6 @@
         });
 
         editor.focus();
-        // 선택 초기화
         fontSizeSelect.selectedIndex = 0;
       });
 
@@ -1016,7 +1013,6 @@
         const sel = window.getSelection();
         if (!sel.rangeCount) return;
 
-        // 선택이 없으면 전체 선택
         if (sel.isCollapsed) {
           const r = document.createRange();
           r.selectNodeContents(editor);
@@ -1024,15 +1020,12 @@
           sel.addRange(r);
         }
 
-        // 기본 서식 제거 + 링크 제거
         document.execCommand("removeFormat", false, null);
         document.execCommand("unlink", false, null);
 
-        // editor 내부 span, font 태그 스타일 정리
         editor.querySelectorAll("span, font").forEach((el) => {
           el.removeAttribute("style");
           el.removeAttribute("size");
-          // 더 이상 쓸 속성이 없고 단순 래퍼면 벗겨버리기
           if (el.attributes.length === 0) {
             const parent = el.parentNode;
             while (el.firstChild) {
@@ -1045,7 +1038,21 @@
         editor.focus();
       });
 
-      // ---- 이벤트 ----
+      // ---- 링크 클릭 시 바로가기 (새 탭) ----
+      editor.addEventListener("click", (e) => {
+        const link = e.target.closest("a");
+        if (!link) return;
+
+        const url = link.getAttribute("href");
+        if (!url) return;
+
+        e.preventDefault();
+        if (!url.toLowerCase().startsWith("javascript:")) {
+          window.open(url, "_blank");
+        }
+      });
+
+      // ---- 일반 이벤트 ----
       editor.addEventListener("input", () => {
         updateCharCount();
         saveStatus.textContent = "입력 중…";
