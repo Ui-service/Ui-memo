@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UI 메모장</title>
+  <style>
+    :root{
+      --bg:#0b1020; --paper:#0f172a; --ink:#e5e7eb; --muted:#94a3b8;
+      --accent:#60a5fa; --border:#1f2937; --yellow:#fde68a; --red:#fca5a5; --green:#86efac;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Helvetica,Arial; background:radial-gradient(1200px 800px at 60% -20%, rgba(96,165,250,.15), transparent 60%),radial-gradient(1200px 800px at 0% 100%, rgba(34,197,94,.08), transparent 60%), var(--bg); color:var(--ink)}
+    .toolbar{position:fixed; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:8px; padding:8px; border:1px solid var(--border); background:rgba(15,23,42,.75); backdrop-filter: blur(6px); border-radius:12px; z-index:10000}
+    .toolbar button{appearance:none; border:1px solid var(--border); background:#0f172a; color:var(--ink); padding:8px 12px; border-radius:10px; cursor:pointer}
+    .toolbar button:focus{outline:2px solid var(--accent); outline-offset:2px}
+    .toolbar .pill{border:1px dashed var(--border); color:var(--muted); padding:6px 10px; border-radius:999px}
+    .board{position:relative; inset:0; width:100vw; height:100vh; overflow:hidden}
+
+    /* [수정됨] display: flex, flex-direction: column 추가 */
+    .note{position:absolute; min-width:240px; min-height:160px; width:320px; height:220px; border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg, rgba(148,163,184,.12), transparent 60%), var(--paper); box-shadow:0 20px 40px rgba(0,0,0,.35); resize:both; overflow:auto; display: flex; flex-direction: column;}
+    .note[hidden]{display:none}
+    .note[data-color="yellow"]{background:linear-gradient(180deg, rgba(253,230,138,.18), transparent 60%), #1b2437;}
+    .note[data-color="red"]{background:linear-gradient(180deg, rgba(252,165,165,.18), transparent 60%), #1b2437;}
+    .note[data-color="green"]{background:linear-gradient(180deg, rgba(134,239,172,.18), transparent 60%), #1b2437;}
+    .head{display:flex; align-items:center; gap:8px; padding:8px; border-bottom:1px solid var(--border); cursor:move; user-select:none; flex-shrink: 0;} /* flex-shrink 추가 */
+    .head input{flex:1; min-width:0; background:transparent; border:none; color:var(--ink); font-weight:700}
+    .head input:focus{outline:none}
+    .head .btn{appearance:none; border:1px solid var(--border); background:#111827; color:var(--ink); padding:4px 8px; border-radius:8px; cursor:pointer; font-size:12px}
+    .head .dot{width:10px; height:10px; border-radius:50%}
+    .dot.yellow{background:var(--yellow)}
+    .dot.red{background:var(--red)}
+    .dot.green{background:var(--green)}
+    
+    /* [수정됨] flex-grow: 1, min-height 추가 */
+    .body{padding:8px; flex-grow: 1; min-height: 100px;}
+    
+    /* [수정됨] height: 100% 로 변경 (calc 제거) */
+    .body textarea{width:100%; height:100%; min-height:100px; background:transparent; border:none; color:var(--ink); font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; resize:none}
+    .body textarea:focus{outline:none}
+    .footer{display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 8px; border-top:1px dashed var(--border); color:var(--muted); font-size:12px; flex-shrink: 0;} /* flex-shrink 추가 */
+    .hint{position:fixed; bottom:10px; left:50%; transform:translateX(-50%); color:var(--muted); font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="toolbar" role="toolbar" aria-label="메모 보드 툴바">
+    <button id="newNoteBtn" title="새 메모 (Ctrl/Cmd+N)">새 메모</button>
+    <button id="openFilesBtn" title="파일로 여러 메모 열기 (Ctrl/Cmd+O)">파일 열기</button>
+    <button id="saveAllBtn" title="현재 보드 저장(JSON) (Ctrl/Cmd+S)">보드 저장</button>
+    <button id="loadAllBtn" title="보드 불러오기(JSON)">보드 불러오기</button>
+    <button id="clearBtn" title="보드 초기화">초기화</button>
+    <span class="pill">U I SERVICE</span>
+  </div>
+
+  <input id="filePicker" type="file" multiple accept=".txt,.md,text/plain" hidden />
+  <input id="jsonPicker" type="file" accept="application/json" hidden />
+
+  <div id="board" class="board" aria-live="polite"></div>
+  <div class="hint">https://discord.gg/G6U7EbEDzc 버그/오류 문의
+</div>
+
+<script>
+(()=>{
+  const $ = (s, el=document)=> el.querySelector(s);
+  const $$ = (s, el=document)=> Array.from(el.querySelectorAll(s));
+
+  const board = $('#board');
+  const newBtn = $('#newNoteBtn');
+  const openBtn = $('#openFilesBtn');
+  const saveAllBtn = $('#saveAllBtn');
+  const loadAllBtn = $('#loadAllBtn');
+  const clearBtn = $('#clearBtn');
+  const filePicker = $('#filePicker');
+  const jsonPicker = $('#jsonPicker');
+
+  const LS_KEY = 'noteboard.v1';
+  let zTop = 10;
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+
+  function saveBoard(){
+    const data = $$('.note', board).map(n => serializeNote(n));
+    localStorage.setItem(LS_KEY, JSON.stringify({ updated: Date.now(), notes:data }));
+  }
+
+  function loadBoard(){
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return;
+    try{
+      const {notes=[]} = JSON.parse(raw);
+      board.innerHTML = '';
+      notes.forEach(spawnFromData);
+      // normalize z-index
+      zTop = Math.max(10, ...notes.map(n=>n.z||10)) + 1;
+    }catch(e){ console.warn('load error', e); }
+  }
+
+  function serializeNote(n){
+    const id = n.dataset.id;
+    return {
+      id,
+      x: n.offsetLeft, y: n.offsetTop,
+      w: n.offsetWidth, h: n.offsetHeight,
+      z: parseInt(n.style.zIndex||10,10),
+      title: $('input.title', n).value,
+      color: n.dataset.color||'none',
+      content: $('textarea', n).value
+    };
+  }
+
+  function spawnFromData(d){
+    const n = createNoteElement(d.id||uid());
+    n.style.left = (d.x||40) + 'px';
+    n.style.top  = (d.y||40) + 'px';
+    n.style.width = (d.w||320) + 'px';
+    n.style.height = (d.h||220) + 'px';
+    n.style.zIndex = d.z|| (zTop++);
+    n.dataset.color = d.color||'none';
+    $('input.title', n).value = d.title||'무제';
+    $('textarea', n).value = d.content||'';
+    board.appendChild(n);
+  }
+
+  function createNoteElement(id=uid()){
+    const n = document.createElement('section');
+    n.className = 'note';
+    n.dataset.id = id;
+    n.style.left = Math.round(40 + Math.random()*60) + 'px';
+    n.style.top = Math.round(40 + Math.random()*60) + 'px';
+    n.style.zIndex = zTop++;
+
+    n.innerHTML = `
+      <div class="head" data-drag-handle>
+        <span class="dot red"   title="빨강" data-color="red"></span>
+        <span class="dot yellow" title="노랑" data-color="yellow"></span>
+        <span class="dot green"  title="초록" data-color="green"></span>
+        <input class="title" placeholder="무제" />
+        <button class="btn" data-act="download" title="메모 파일로 저장">저장</button>
+        <button class="btn" data-act="close" title="닫기">닫기</button>
+      </div>
+      <div class="body"><textarea spellcheck="false" placeholder="내용을 입력하세요..."></textarea></div>
+      <div class="footer"><span class="size"></span><span class="pos"></span></div>
+    `;
+
+    // bring to front on any interaction
+    n.addEventListener('pointerdown', ()=>{ n.style.zIndex = ++zTop; saveBoard(); });
+
+    // color switching
+    $$('.dot', n).forEach(dot=>{
+      dot.addEventListener('click', ()=>{ n.dataset.color = dot.dataset.color; saveBoard(); });
+    });
+
+    // buttons
+    n.addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-act]'); if(!btn) return;
+      const act = btn.dataset.act;
+      if(act==='close'){ n.remove(); saveBoard(); }
+      if(act==='download'){
+        const name = ($('input.title', n).value||'메모') + '.txt';
+        const blob = new Blob([$ ('textarea', n).value], {type:'text/plain;charset=utf-8'});
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+      }
+    });
+
+    // change events -> save
+    ['input','keyup','mouseup','resize'].forEach(ev=> n.addEventListener(ev, debounce(saveBoard, 300)));
+
+    // textarea autosize indicator
+    const footerSize = $('.size', n);
+    const footerPos = $('.pos', n);
+    const updateFooter = ()=>{
+      const t = $('textarea', n);
+      footerSize.textContent = `문자 ${t.value.length}`;
+      footerPos.textContent = `${Math.round(n.offsetLeft)}, ${Math.round(n.offsetTop)} · ${Math.round(n.offsetWidth)}×${Math.round(n.offsetHeight)}`;
+    };
+    n.addEventListener('input', updateFooter);
+    const ro = new ResizeObserver(updateFooter); ro.observe(n);
+    updateFooter();
+
+    // === [수정된 부분] drag logic (클릭 토글 방식으로 변경) ===
+    const handle = $('[data-drag-handle]', n);
+    let dragging = false; 
+    let offsetX = 0, offsetY = 0; // 커서와 메모 좌상단 사이의 간격
+
+    handle.addEventListener('pointerdown', (e)=>{
+      // 버튼, 인풋, 색상 점 클릭 시 드래그 로직 무시
+      if (e.target.closest('button, input, .dot')) {
+        return;
+      }
+      
+      e.preventDefault(); // 클릭 기본 동작(예: 텍스트 선택) 방지
+
+      if (dragging) {
+        // 2. 이미 드래그 중(따라다니는 중)이었다면, 드래그 종료
+        dragging = false;
+        n.releasePointerCapture(e.pointerId); // 포인터 캡처 해제
+        saveBoard(); // 위치 고정 및 저장
+      } else {
+        // 1. 드래그 시작
+        dragging = true;
+        n.setPointerCapture(e.pointerId); // 포인터 캡처 (노트 밖에서도 이벤트 받기)
+        // 현재 커서 위치와 메모의 현재 위치를 기준으로 offset 계산
+        offsetX = e.clientX - n.offsetLeft;
+        offsetY = e.clientY - n.offsetTop;
+      }
+    });
+
+    handle.addEventListener('pointermove', (e)=>{
+      if(!dragging) return; // 드래그 상태가 아니면 무시
+      
+      // 커서 위치에서 offset을 뺀 값으로 메모 위치 실시간 업데이트
+      n.style.left = (e.clientX - offsetX) + 'px';
+      n.style.top = (e.clientY - offsetY) + 'px';
+    });
+
+    // 'pointerup' (마우스 떼기) 리스너는 제거합니다. 
+    // 이제 'pointerdown' (클릭) 만으로 드래그를 시작하고 멈춥니다.
+    
+    // === [수정 완료] ===
+
+    board.appendChild(n);
+    return n;
+  }
+
+  function newNote(){ createNoteElement(); saveBoard(); }
+
+  function openFiles(files){
+    if(!files || !files.length) return;
+    const arr = Array.from(files);
+    let i = 0; const step = ()=>{
+      const f = arr[i++]; if(!f) { saveBoard(); return; }
+      const r = new FileReader();
+      r.onload = ()=>{ const n = createNoteElement(); $('input.title', n).value = f.name.replace(/\.[^.]+$/, ''); $('textarea', n).value = String(r.result||''); saveBoard(); step(); };
+      r.readAsText(f);
+    }; step();
+  }
+
+  function downloadWorkspace(){
+    const data = { version:1, exported: new Date().toISOString(), notes: $$('.note', board).map(serializeNote) };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='noteboard.json'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  function loadWorkspaceFile(file){
+    const r = new FileReader(); r.onload = ()=>{
+      try{ const data = JSON.parse(String(r.result||'{}')); if(Array.isArray(data.notes)){ board.innerHTML=''; data.notes.forEach(spawnFromData); saveBoard(); }
+      }catch(e){ alert('JSON을 읽는 중 오류가 발생했습니다.'); }
+    }; r.readAsText(file);
+  }
+
+  // helpers
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+  // toolbar
+  newBtn.addEventListener('click', newNote);
+  openBtn.addEventListener('click', ()=> filePicker.click());
+  saveAllBtn.addEventListener('click', downloadWorkspace);
+  loadAllBtn.addEventListener('click', ()=> jsonPicker.click());
+  clearBtn.addEventListener('click', ()=>{ if(confirm('보드를 초기화할까요? 모든 메모가 지워집니다.')) { localStorage.removeItem(LS_KEY); board.innerHTML=''; } });
+
+  filePicker.addEventListener('change', (e)=>{ openFiles(e.target.files); filePicker.value=''; });
+  jsonPicker.addEventListener('change', (e)=>{ const f=e.target.files[0]; if(f) loadWorkspaceFile(f); jsonPicker.value=''; });
+
+  // shortcuts
+  document.addEventListener('keydown', (e)=>{
+    const ctrl = e.ctrlKey || e.metaKey; const k = (e.key||'').toLowerCase();
+    if(ctrl && k==='n'){ e.preventDefault(); newNote(); }
+    if(ctrl && k==='o'){ e.preventDefault(); filePicker.click(); }
+    if(ctrl && k==='s'){ e.preventDefault(); downloadWorkspace(); }
+  });
+
+  // init
+  loadBoard();
+  if(!localStorage.getItem(LS_KEY)) { // first time
+    for(let i=0;i<2;i++) newNote();
+    $('textarea', board).value = '헤더의 빈 곳을 클릭해\n메모를 이동시키세요!\n\n다시 클릭하면 고정됩니다.';
+    saveBoard();
+  }
+})();
+</script>
+</body>
+</html>
