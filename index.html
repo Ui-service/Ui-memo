@@ -1,283 +1,1087 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UI 메모장</title>
+  <meta charset="UTF-8" />
+  <title>Elegant Memo · Rich Multi Notes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    :root{
-      --bg:#0b1020; --paper:#0f172a; --ink:#e5e7eb; --muted:#94a3b8;
-      --accent:#60a5fa; --border:#1f2937; --yellow:#fde68a; --red:#fca5a5; --green:#86efac;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Helvetica,Arial; background:radial-gradient(1200px 800px at 60% -20%, rgba(96,165,250,.15), transparent 60%),radial-gradient(1200px 800px at 0% 100%, rgba(34,197,94,.08), transparent 60%), var(--bg); color:var(--ink)}
-    .toolbar{position:fixed; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:8px; padding:8px; border:1px solid var(--border); background:rgba(15,23,42,.75); backdrop-filter: blur(6px); border-radius:12px; z-index:10000}
-    .toolbar button{appearance:none; border:1px solid var(--border); background:#0f172a; color:var(--ink); padding:8px 12px; border-radius:10px; cursor:pointer}
-    .toolbar button:focus{outline:2px solid var(--accent); outline-offset:2px}
-    .toolbar .pill{border:1px dashed var(--border); color:var(--muted); padding:6px 10px; border-radius:999px}
-    .board{position:relative; inset:0; width:100vw; height:100vh; overflow:hidden}
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", Roboto, "Noto Sans KR", system-ui, -sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #202637 0, #050712 55%, #020308 100%);
+      color: #f5f5f7;
+    }
 
-    /* [수정됨] display: flex, flex-direction: column 추가 */
-    .note{position:absolute; min-width:240px; min-height:160px; width:320px; height:220px; border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg, rgba(148,163,184,.12), transparent 60%), var(--paper); box-shadow:0 20px 40px rgba(0,0,0,.35); resize:both; overflow:auto; display: flex; flex-direction: column;}
-    .note[hidden]{display:none}
-    .note[data-color="yellow"]{background:linear-gradient(180deg, rgba(253,230,138,.18), transparent 60%), #1b2437;}
-    .note[data-color="red"]{background:linear-gradient(180deg, rgba(252,165,165,.18), transparent 60%), #1b2437;}
-    .note[data-color="green"]{background:linear-gradient(180deg, rgba(134,239,172,.18), transparent 60%), #1b2437;}
-    .head{display:flex; align-items:center; gap:8px; padding:8px; border-bottom:1px solid var(--border); cursor:move; user-select:none; flex-shrink: 0;} /* flex-shrink 추가 */
-    .head input{flex:1; min-width:0; background:transparent; border:none; color:var(--ink); font-weight:700}
-    .head input:focus{outline:none}
-    .head .btn{appearance:none; border:1px solid var(--border); background:#111827; color:var(--ink); padding:4px 8px; border-radius:8px; cursor:pointer; font-size:12px}
-    .head .dot{width:10px; height:10px; border-radius:50%}
-    .dot.yellow{background:var(--yellow)}
-    .dot.red{background:var(--red)}
-    .dot.green{background:var(--green)}
-    
-    /* [수정됨] flex-grow: 1, min-height 추가 */
-    .body{padding:8px; flex-grow: 1; min-height: 100px;}
-    
-    /* [수정됨] height: 100% 로 변경 (calc 제거) */
-    .body textarea{width:100%; height:100%; min-height:100px; background:transparent; border:none; color:var(--ink); font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; resize:none}
-    .body textarea:focus{outline:none}
-    .footer{display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 8px; border-top:1px dashed var(--border); color:var(--muted); font-size:12px; flex-shrink: 0;} /* flex-shrink 추가 */
-    .hint{position:fixed; bottom:10px; left:50%; transform:translateX(-50%); color:var(--muted); font-size:12px}
+    .memo-wrapper {
+      width: min(1160px, 96vw);
+      padding: 24px;
+      border-radius: 24px;
+      background: rgba(9, 11, 24, 0.78);
+      backdrop-filter: blur(18px);
+      box-shadow:
+        0 18px 55px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(128, 160, 255, 0.28);
+    }
+
+    .memo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .memo-title-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .logo-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(200, 210, 255, 0.75);
+    }
+
+    .logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #6ae3ff, #406bff);
+      box-shadow: 0 0 12px rgba(64, 107, 255, 0.9);
+    }
+
+    .memo-title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .memo-subtitle {
+      font-size: 13px;
+      color: rgba(220, 225, 255, 0.65);
+    }
+
+    .memo-status {
+      text-align: right;
+      font-size: 12px;
+      color: rgba(200, 205, 240, 0.72);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      margin-right: 4px;
+      background: radial-gradient(circle at 30% 30%, #4af39f, #0da36a);
+      box-shadow: 0 0 10px rgba(74, 243, 159, 0.9);
+    }
+
+    .memo-date {
+      opacity: 0.8;
+    }
+
+    .memo-shell {
+      display: flex;
+      gap: 18px;
+      margin-top: 10px;
+    }
+
+    /* SIDEBAR */
+    .memo-sidebar {
+      width: 270px;
+      min-width: 230px;
+      background: rgba(7, 10, 26, 0.96);
+      border-radius: 18px;
+      border: 1px solid rgba(100, 122, 255, 0.55);
+      padding: 10px 10px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(205, 214, 255, 0.86);
+    }
+
+    .sidebar-sub {
+      font-size: 11px;
+      color: rgba(170, 180, 220, 0.7);
+      margin-bottom: 3px;
+    }
+
+    .note-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-top: 2px;
+    }
+
+    .note-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .note-list::-webkit-scrollbar-thumb {
+      background: rgba(121, 134, 255, 0.75);
+      border-radius: 999px;
+    }
+    .note-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .note-item {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(80, 101, 190, 0.7);
+      padding: 7px 9px;
+      background: radial-gradient(circle at top left, rgba(32, 40, 92, 0.9), rgba(10, 16, 46, 0.96));
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 12px;
+      color: rgba(226, 232, 255, 0.92);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, border 0.12s ease,
+        background 0.12s ease;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .note-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+      border-color: rgba(150, 179, 255, 1);
+    }
+
+    .note-item.active {
+      border-color: rgba(178, 203, 255, 1);
+      box-shadow: 0 0 0 1px rgba(160, 190, 255, 0.9),
+        0 12px 30px rgba(0, 0, 0, 0.6);
+      background: radial-gradient(circle at top left, #4e5dff, #141936);
+    }
+
+    .note-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .note-title-text {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note-pill {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(210, 222, 255, 0.7);
+      background: rgba(10, 12, 38, 0.9);
+    }
+
+    .note-updated {
+      font-size: 10px;
+      opacity: 0.8;
+    }
+
+    .note-preview {
+      font-size: 11px;
+      opacity: 0.75;
+      max-height: 32px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .note-delete {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(240, 120, 140, 0.8);
+      background: rgba(40, 10, 25, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: rgba(255, 190, 210, 0.9);
+      cursor: pointer;
+      opacity: 0.0;
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+
+    .note-item:hover .note-delete {
+      opacity: 1;
+    }
+    .note-delete:hover {
+      transform: scale(1.05);
+    }
+
+    .memo-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .title-input {
+      width: 100%;
+      background: rgba(7, 10, 26, 0.95);
+      border-radius: 16px;
+      border: 1px solid rgba(110, 135, 255, 0.5);
+      padding: 10px 14px;
+      color: #f9fafb;
+      font-size: 15px;
+      outline: none;
+      transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      margin-bottom: 10px;
+    }
+    .title-input::placeholder {
+      color: rgba(200, 205, 240, 0.6);
+    }
+    .title-input:focus {
+      border-color: rgba(138, 180, 255, 0.95);
+      box-shadow: 0 0 0 1px rgba(138, 180, 255, 0.6),
+        0 0 30px rgba(59, 130, 246, 0.35);
+      background: rgba(5, 8, 22, 1);
+    }
+
+    .memo-body {
+      border-radius: 20px;
+      background: radial-gradient(circle at top left, #151b33, #050712 55%);
+      border: 1px solid rgba(86, 110, 255, 0.55);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 260px;
+    }
+
+    .memo-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(120, 140, 255, 0.3);
+      background: linear-gradient(
+        90deg,
+        rgba(33, 43, 89, 0.9),
+        rgba(12, 19, 54, 0.9)
+      );
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 10px;
+      border: 1px solid rgba(158, 185, 255, 0.7);
+      background: rgba(7, 10, 36, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(222, 230, 255, 0.86);
+    }
+
+    .counter {
+      font-size: 12px;
+      color: rgba(210, 220, 255, 0.76);
+    }
+
+    .tool-btn {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(23, 32, 88, 0.6);
+      color: rgba(228, 235, 255, 0.9);
+      border: 1px solid rgba(146, 170, 255, 0.7);
+      min-width: 24px;
+      transition: background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .tool-btn:hover {
+      background: rgba(40, 56, 135, 0.95);
+      transform: translateY(-0.5px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+    }
+    .tool-btn.active {
+      background: rgba(79, 99, 210, 1);
+    }
+
+    .tool-select {
+      border-radius: 999px;
+      border: 1px solid rgba(146, 170, 255, 0.7);
+      background: rgba(9, 13, 40, 0.95);
+      color: rgba(230, 236, 255, 0.95);
+      font-size: 11px;
+      padding: 4px 10px;
+      outline: none;
+    }
+
+    .color-input-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: rgba(220, 228, 255, 0.9);
+    }
+
+    .color-input-wrapper input[type="color"] {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(170, 190, 255, 0.9);
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .btn {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(23, 32, 88, 0.95);
+      color: rgba(228, 235, 255, 0.9);
+      border: 1px solid rgba(146, 170, 255, 0.8);
+      transition: transform 0.12s ease, box-shadow 0.12s ease,
+        background 0.12s ease, border 0.12s ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45),
+        0 0 16px rgba(128, 156, 255, 0.6);
+      background: rgba(38, 50, 120, 1);
+      border-color: rgba(186, 201, 255, 1);
+    }
+    .btn:active {
+      transform: translateY(0px) scale(0.98);
+      box-shadow: none;
+    }
+    .btn-ghost {
+      background: transparent;
+      border-color: rgba(130, 146, 210, 0.65);
+      color: rgba(200, 210, 240, 0.9);
+    }
+    .btn-ghost:hover {
+      background: rgba(24, 32, 80, 0.9);
+    }
+    .btn-danger {
+      border-color: rgba(240, 120, 140, 0.9);
+      color: rgba(255, 210, 220, 0.95);
+      background: rgba(70, 20, 35, 0.95);
+    }
+    .btn-danger:hover {
+      background: rgba(120, 35, 55, 0.98);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+    }
+
+    .btn-icon {
+      font-size: 14px;
+    }
+
+    .memo-editor {
+      flex: 1;
+      padding: 14px 18px 18px;
+      font-size: 14px;
+      line-height: 1.7;
+      outline: none;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(121, 134, 255, 0.9) transparent;
+    }
+
+    .memo-editor[contenteditable="true"]:empty:before {
+      content: attr(data-placeholder);
+      color: rgba(180, 190, 230, 0.6);
+      pointer-events: none;
+    }
+
+    .memo-editor::-webkit-scrollbar {
+      width: 8px;
+    }
+    .memo-editor::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .memo-editor::-webkit-scrollbar-thumb {
+      background: rgba(121, 134, 255, 0.7);
+      border-radius: 999px;
+    }
+
+    .memo-footer {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: rgba(190, 198, 230, 0.65);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(98, 120, 255, 0.7);
+      background: radial-gradient(circle at 0 0, #4358ff, #1b2048);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(235, 240, 255, 0.92);
+    }
+
+    @media (max-width: 900px) {
+      .memo-wrapper {
+        padding: 18px;
+        border-radius: 18px;
+      }
+      .memo-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .memo-shell {
+        flex-direction: column;
+      }
+      .memo-sidebar {
+        width: 100%;
+        order: 2;
+      }
+      .memo-main {
+        order: 1;
+      }
+      .memo-title {
+        font-size: 20px;
+      }
+      .memo-body {
+        border-radius: 16px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="toolbar" role="toolbar" aria-label="메모 보드 툴바">
-    <button id="newNoteBtn" title="새 메모 (Ctrl/Cmd+N)">새 메모</button>
-    <button id="openFilesBtn" title="파일로 여러 메모 열기 (Ctrl/Cmd+O)">파일 열기</button>
-    <button id="saveAllBtn" title="현재 보드 저장(JSON) (Ctrl/Cmd+S)">보드 저장</button>
-    <button id="loadAllBtn" title="보드 불러오기(JSON)">보드 불러오기</button>
-    <button id="clearBtn" title="보드 초기화">초기화</button>
-    <span class="pill">U I SERVICE</span>
+  <div class="memo-wrapper">
+    <header class="memo-header">
+      <div class="memo-title-area">
+        <div class="logo-line">
+          <span class="logo-dot"></span>
+          ELEGANT MEMO
+        </div>
+        <div class="memo-title">Rich Multi Notebook</div>
+        <div class="memo-subtitle">
+          여러 개의 메모를 만들고, 글자 크기·색상·형광펜·링크까지 자유롭게 꾸며보세요.
+        </div>
+      </div>
+      <div class="memo-status">
+        <div>
+          <span class="status-dot"></span>
+          <span id="save-status">자동 저장 준비됨</span>
+        </div>
+        <div class="memo-date">
+          오늘 · <span id="today-string"></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="memo-shell">
+      <!-- 왼쪽: 메모 리스트 -->
+      <aside class="memo-sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title">MY NOTES</div>
+          <button class="btn btn-ghost" id="btn-new">
+            <span class="btn-icon">＋</span> 새 메모
+          </button>
+        </div>
+        <div class="sidebar-sub">각 메모는 로컬에 저장되며, 언제든 삭제할 수 있습니다.</div>
+        <div id="note-list" class="note-list"></div>
+      </aside>
+
+      <!-- 오른쪽: 현재 선택된 메모 -->
+      <main class="memo-main">
+        <input
+          id="note-title"
+          class="title-input"
+          type="text"
+          placeholder="제목을 입력하세요 (예: 오늘의 아이디어, 할 일, 공부 메모 등)"
+        />
+
+        <section class="memo-body">
+          <div class="memo-toolbar">
+            <div class="toolbar-left">
+              <span class="chip">Rich Text · Local Only</span>
+
+              <!-- 글자 크기 (px 단위 숫자) -->
+              <select id="font-size-select" class="tool-select">
+                <option value="">크기(px)</option>
+                <option value="10">10</option>
+                <option value="12">12</option>
+                <option value="14">14</option>
+                <option value="16">16</option>
+                <option value="20">20</option>
+                <option value="24">24</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+              </select>
+
+              <!-- B I U -->
+              <button class="tool-btn" data-cmd="bold"><b>B</b></button>
+              <button class="tool-btn" data-cmd="italic"><i>I</i></button>
+              <button class="tool-btn" data-cmd="underline"><u>U</u></button>
+
+              <!-- 색깔 / 형광펜 -->
+              <span class="color-input-wrapper">
+                A
+                <input type="color" id="color-fore" title="글자색" value="#ffffff" />
+              </span>
+              <span class="color-input-wrapper">
+                ▉
+                <input type="color" id="color-back" title="형광펜" value="#fff59d" />
+              </span>
+
+              <!-- 링크 -->
+              <button class="tool-btn" id="btn-link">🔗</button>
+              <button class="tool-btn" id="btn-unlink" title="링크 제거">⨉</button>
+
+              <!-- 리스트 -->
+              <button class="tool-btn" data-cmd="insertUnorderedList">• 목록</button>
+              <button class="tool-btn" data-cmd="insertOrderedList">1. 목록</button>
+
+              <!-- 초기화 -->
+              <button class="tool-btn" id="btn-clear-format" title="서식 제거">CLR</button>
+            </div>
+
+            <div class="toolbar-right">
+              <span class="counter" id="char-count">0 글자</span>
+              <button class="btn" id="btn-save">
+                <span class="btn-icon">💾</span> 저장
+              </button>
+              <button class="btn btn-ghost" id="btn-clear">
+                <span class="btn-icon">🧹</span> 내용 지우기
+              </button>
+              <button class="btn btn-danger" id="btn-delete-current">
+                <span class="btn-icon">🗑️</span> 메모 삭제
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="memo-editor"
+            class="memo-editor"
+            contenteditable="true"
+            data-placeholder="이 메모에 적고 싶은 내용을 자유롭게 작성하세요.&#10;&#10;예시)&#10;- 형광펜으로 강조하고 싶은 문장&#10;- 링크가 있는 참고 자료&#10;- 색깔별 정리 메모"
+          ></div>
+        </section>
+
+        <footer class="memo-footer">
+          <div>
+            <span class="badge">offline first</span>
+            <span style="margin-left: 8px;">모든 메모는 이 브라우저의 로컬 저장소에만 보관됩니다.</span>
+          </div>
+          <div id="last-saved-time">마지막 저장: 아직 없음</div>
+        </footer>
+      </main>
+    </div>
   </div>
 
-  <input id="filePicker" type="file" multiple accept=".txt,.md,text/plain" hidden />
-  <input id="jsonPicker" type="file" accept="application/json" hidden />
+  <script>
+    (function () {
+      const LS_KEY = "elegant_memo_rich_multi_notes_v1";
 
-  <div id="board" class="board" aria-live="polite"></div>
-  <div class="hint">https://discord.gg/G6U7EbEDzc 버그/오류 문의
-</div>
+      const titleInput = document.getElementById("note-title");
+      const editor = document.getElementById("memo-editor");
+      const charCount = document.getElementById("char-count");
+      const saveStatus = document.getElementById("save-status");
+      const lastSavedTime = document.getElementById("last-saved-time");
+      const todayString = document.getElementById("today-string");
 
-<script>
-(()=>{
-  const $ = (s, el=document)=> el.querySelector(s);
-  const $$ = (s, el=document)=> Array.from(el.querySelectorAll(s));
+      const btnSave = document.getElementById("btn-save");
+      const btnNew = document.getElementById("btn-new");
+      const btnClear = document.getElementById("btn-clear");
+      const btnDeleteCurrent = document.getElementById("btn-delete-current");
+      const noteList = document.getElementById("note-list");
 
-  const board = $('#board');
-  const newBtn = $('#newNoteBtn');
-  const openBtn = $('#openFilesBtn');
-  const saveAllBtn = $('#saveAllBtn');
-  const loadAllBtn = $('#loadAllBtn');
-  const clearBtn = $('#clearBtn');
-  const filePicker = $('#filePicker');
-  const jsonPicker = $('#jsonPicker');
+      const fontSizeSelect = document.getElementById("font-size-select");
+      const colorForeInput = document.getElementById("color-fore");
+      const colorBackInput = document.getElementById("color-back");
+      const btnLink = document.getElementById("btn-link");
+      const btnUnlink = document.getElementById("btn-unlink");
+      const btnClearFormat = document.getElementById("btn-clear-format");
 
-  const LS_KEY = 'noteboard.v1';
-  let zTop = 10;
+      let state = {
+        notes: [],
+        activeId: null,
+      };
 
-  function uid(){ return Math.random().toString(36).slice(2,9); }
-
-  function saveBoard(){
-    const data = $$('.note', board).map(n => serializeNote(n));
-    localStorage.setItem(LS_KEY, JSON.stringify({ updated: Date.now(), notes:data }));
-  }
-
-  function loadBoard(){
-    const raw = localStorage.getItem(LS_KEY);
-    if(!raw) return;
-    try{
-      const {notes=[]} = JSON.parse(raw);
-      board.innerHTML = '';
-      notes.forEach(spawnFromData);
-      // normalize z-index
-      zTop = Math.max(10, ...notes.map(n=>n.z||10)) + 1;
-    }catch(e){ console.warn('load error', e); }
-  }
-
-  function serializeNote(n){
-    const id = n.dataset.id;
-    return {
-      id,
-      x: n.offsetLeft, y: n.offsetTop,
-      w: n.offsetWidth, h: n.offsetHeight,
-      z: parseInt(n.style.zIndex||10,10),
-      title: $('input.title', n).value,
-      color: n.dataset.color||'none',
-      content: $('textarea', n).value
-    };
-  }
-
-  function spawnFromData(d){
-    const n = createNoteElement(d.id||uid());
-    n.style.left = (d.x||40) + 'px';
-    n.style.top  = (d.y||40) + 'px';
-    n.style.width = (d.w||320) + 'px';
-    n.style.height = (d.h||220) + 'px';
-    n.style.zIndex = d.z|| (zTop++);
-    n.dataset.color = d.color||'none';
-    $('input.title', n).value = d.title||'무제';
-    $('textarea', n).value = d.content||'';
-    board.appendChild(n);
-  }
-
-  function createNoteElement(id=uid()){
-    const n = document.createElement('section');
-    n.className = 'note';
-    n.dataset.id = id;
-    n.style.left = Math.round(40 + Math.random()*60) + 'px';
-    n.style.top = Math.round(40 + Math.random()*60) + 'px';
-    n.style.zIndex = zTop++;
-
-    n.innerHTML = `
-      <div class="head" data-drag-handle>
-        <span class="dot red"   title="빨강" data-color="red"></span>
-        <span class="dot yellow" title="노랑" data-color="yellow"></span>
-        <span class="dot green"  title="초록" data-color="green"></span>
-        <input class="title" placeholder="무제" />
-        <button class="btn" data-act="download" title="메모 파일로 저장">저장</button>
-        <button class="btn" data-act="close" title="닫기">닫기</button>
-      </div>
-      <div class="body"><textarea spellcheck="false" placeholder="내용을 입력하세요..."></textarea></div>
-      <div class="footer"><span class="size"></span><span class="pos"></span></div>
-    `;
-
-    // bring to front on any interaction
-    n.addEventListener('pointerdown', ()=>{ n.style.zIndex = ++zTop; saveBoard(); });
-
-    // color switching
-    $$('.dot', n).forEach(dot=>{
-      dot.addEventListener('click', ()=>{ n.dataset.color = dot.dataset.color; saveBoard(); });
-    });
-
-    // buttons
-    n.addEventListener('click', (e)=>{
-      const btn = e.target.closest('[data-act]'); if(!btn) return;
-      const act = btn.dataset.act;
-      if(act==='close'){ n.remove(); saveBoard(); }
-      if(act==='download'){
-        const name = ($('input.title', n).value||'메모') + '.txt';
-        const blob = new Blob([$ ('textarea', n).value], {type:'text/plain;charset=utf-8'});
-        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+      function formatDateForHeader(date) {
+        const days = ["일", "월", "화", "수", "목", "금", "토"];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const weekday = days[date.getDay()];
+        return `${year}.${month}.${day} (${weekday})`;
       }
-    });
 
-    // change events -> save
-    ['input','keyup','mouseup','resize'].forEach(ev=> n.addEventListener(ev, debounce(saveBoard, 300)));
-
-    // textarea autosize indicator
-    const footerSize = $('.size', n);
-    const footerPos = $('.pos', n);
-    const updateFooter = ()=>{
-      const t = $('textarea', n);
-      footerSize.textContent = `문자 ${t.value.length}`;
-      footerPos.textContent = `${Math.round(n.offsetLeft)}, ${Math.round(n.offsetTop)} · ${Math.round(n.offsetWidth)}×${Math.round(n.offsetHeight)}`;
-    };
-    n.addEventListener('input', updateFooter);
-    const ro = new ResizeObserver(updateFooter); ro.observe(n);
-    updateFooter();
-
-    // === [수정된 부분] drag logic (클릭 토글 방식으로 변경) ===
-    const handle = $('[data-drag-handle]', n);
-    let dragging = false; 
-    let offsetX = 0, offsetY = 0; // 커서와 메모 좌상단 사이의 간격
-
-    handle.addEventListener('pointerdown', (e)=>{
-      // 버튼, 인풋, 색상 점 클릭 시 드래그 로직 무시
-      if (e.target.closest('button, input, .dot')) {
-        return;
+      function formatFullDateTime(date) {
+        const base = formatDateForHeader(date);
+        const h = String(date.getHours()).padStart(2, "0");
+        const m = String(date.getMinutes()).padStart(2, "0");
+        const s = String(date.getSeconds()).padStart(2, "0");
+        return `${base} ${h}:${m}:${s}`;
       }
-      
-      e.preventDefault(); // 클릭 기본 동작(예: 텍스트 선택) 방지
 
-      if (dragging) {
-        // 2. 이미 드래그 중(따라다니는 중)이었다면, 드래그 종료
-        dragging = false;
-        n.releasePointerCapture(e.pointerId); // 포인터 캡처 해제
-        saveBoard(); // 위치 고정 및 저장
-      } else {
-        // 1. 드래그 시작
-        dragging = true;
-        n.setPointerCapture(e.pointerId); // 포인터 캡처 (노트 밖에서도 이벤트 받기)
-        // 현재 커서 위치와 메모의 현재 위치를 기준으로 offset 계산
-        offsetX = e.clientX - n.offsetLeft;
-        offsetY = e.clientY - n.offsetTop;
+      todayString.textContent = formatDateForHeader(new Date());
+
+      function updateCharCount() {
+        const text = editor.innerText || "";
+        charCount.textContent = `${text.length.toLocaleString()} 글자`;
       }
-    });
 
-    handle.addEventListener('pointermove', (e)=>{
-      if(!dragging) return; // 드래그 상태가 아니면 무시
-      
-      // 커서 위치에서 offset을 뺀 값으로 메모 위치 실시간 업데이트
-      n.style.left = (e.clientX - offsetX) + 'px';
-      n.style.top = (e.clientY - offsetY) + 'px';
-    });
+      function loadFromLocalStorage() {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return;
+          const data = JSON.parse(raw);
+          if (Array.isArray(data.notes)) {
+            state.notes = data.notes;
+          }
+          if (data.activeId) {
+            state.activeId = data.activeId;
+          }
+        } catch (e) {
+          console.error("로컬스토리지에서 불러오는 중 오류:", e);
+        }
+      }
 
-    // 'pointerup' (마우스 떼기) 리스너는 제거합니다. 
-    // 이제 'pointerdown' (클릭) 만으로 드래그를 시작하고 멈춥니다.
-    
-    // === [수정 완료] ===
+      function saveState() {
+        try {
+          localStorage.setItem(LS_KEY, JSON.stringify(state));
+        } catch (e) {
+          console.error("상태 저장 중 오류:", e);
+          saveStatus.textContent = "저장 실패 (로컬 저장소 용량 등)";
+        }
+      }
 
-    board.appendChild(n);
-    return n;
-  }
+      function getActiveNote() {
+        if (!state.activeId) return null;
+        return state.notes.find((n) => n.id === state.activeId) || null;
+      }
 
-  function newNote(){ createNoteElement(); saveBoard(); }
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
 
-  function openFiles(files){
-    if(!files || !files.length) return;
-    const arr = Array.from(files);
-    let i = 0; const step = ()=>{
-      const f = arr[i++]; if(!f) { saveBoard(); return; }
-      const r = new FileReader();
-      r.onload = ()=>{ const n = createNoteElement(); $('input.title', n).value = f.name.replace(/\.[^.]+$/, ''); $('textarea', n).value = String(r.result||''); saveBoard(); step(); };
-      r.readAsText(f);
-    }; step();
-  }
+      function getPlainTextFromHtml(html) {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html || "";
+        return (tmp.textContent || tmp.innerText || "").trim();
+      }
 
-  function downloadWorkspace(){
-    const data = { version:1, exported: new Date().toISOString(), notes: $$('.note', board).map(serializeNote) };
-    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='noteboard.json'; a.click(); URL.revokeObjectURL(url);
-  }
+      function renderNotesList() {
+        if (!state.notes.length) {
+          noteList.innerHTML =
+            '<div style="font-size:12px; color:rgba(180,190,230,0.8); padding:4px 2px;">아직 메모가 없습니다. <strong>새 메모</strong> 버튼을 눌러 시작해 보세요.</div>';
+          return;
+        }
 
-  function loadWorkspaceFile(file){
-    const r = new FileReader(); r.onload = ()=>{
-      try{ const data = JSON.parse(String(r.result||'{}')); if(Array.isArray(data.notes)){ board.innerHTML=''; data.notes.forEach(spawnFromData); saveBoard(); }
-      }catch(e){ alert('JSON을 읽는 중 오류가 발생했습니다.'); }
-    }; r.readAsText(file);
-  }
+        noteList.innerHTML = state.notes
+          .map((note) => {
+            const isActive = note.id === state.activeId;
+            const title = note.title && note.title.trim()
+              ? note.title.trim()
+              : "제목 없음";
+            const preview = getPlainTextFromHtml(note.contentHtml);
+            const previewShort = preview || "내용 없음";
+            const updated = note.updatedAt || "저장 기록 없음";
 
-  // helpers
-  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+            return `
+              <div class="note-item ${isActive ? "active" : ""}" data-id="${note.id}">
+                <div class="note-title-line">
+                  <div class="note-title-text">${escapeHtml(title)}</div>
+                  <div class="note-pill">${isActive ? "ACTIVE" : "NOTE"}</div>
+                </div>
+                <div class="note-updated">${escapeHtml(updated)}</div>
+                <div class="note-preview">${escapeHtml(previewShort)}</div>
+                <div class="note-delete" data-id="${note.id}" title="메모 삭제">×</div>
+              </div>
+            `;
+          })
+          .join("");
 
-  // toolbar
-  newBtn.addEventListener('click', newNote);
-  openBtn.addEventListener('click', ()=> filePicker.click());
-  saveAllBtn.addEventListener('click', downloadWorkspace);
-  loadAllBtn.addEventListener('click', ()=> jsonPicker.click());
-  clearBtn.addEventListener('click', ()=>{ if(confirm('보드를 초기화할까요? 모든 메모가 지워집니다.')) { localStorage.removeItem(LS_KEY); board.innerHTML=''; } });
+        const items = noteList.querySelectorAll(".note-item");
+        items.forEach((el) => {
+          el.addEventListener("click", (e) => {
+            const target = e.target;
+            if (target.classList.contains("note-delete")) return;
+            const id = el.getAttribute("data-id");
+            switchNote(id);
+          });
+        });
 
-  filePicker.addEventListener('change', (e)=>{ openFiles(e.target.files); filePicker.value=''; });
-  jsonPicker.addEventListener('change', (e)=>{ const f=e.target.files[0]; if(f) loadWorkspaceFile(f); jsonPicker.value=''; });
+        const deleteButtons = noteList.querySelectorAll(".note-delete");
+        deleteButtons.forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute("data-id");
+            deleteNoteById(id);
+          });
+        });
+      }
 
-  // shortcuts
-  document.addEventListener('keydown', (e)=>{
-    const ctrl = e.ctrlKey || e.metaKey; const k = (e.key||'').toLowerCase();
-    if(ctrl && k==='n'){ e.preventDefault(); newNote(); }
-    if(ctrl && k==='o'){ e.preventDefault(); filePicker.click(); }
-    if(ctrl && k==='s'){ e.preventDefault(); downloadWorkspace(); }
-  });
+      function renderActiveNote() {
+        const note = getActiveNote();
+        if (!note) {
+          titleInput.value = "";
+          editor.innerHTML = "";
+          lastSavedTime.textContent = "마지막 저장: 아직 없음";
+          updateCharCount();
+          return;
+        }
+        titleInput.value = note.title || "";
+        editor.innerHTML = note.contentHtml || "";
+        lastSavedTime.textContent = note.updatedAt
+          ? `마지막 저장: ${note.updatedAt}`
+          : "마지막 저장: 아직 없음";
+        updateCharCount();
+        saveStatus.textContent = "자동 저장 준비됨";
+        saveStatus.style.opacity = "0.8";
+      }
 
-  // init
-  loadBoard();
-  if(!localStorage.getItem(LS_KEY)) { // first time
-    for(let i=0;i<2;i++) newNote();
-    $('textarea', board).value = '헤더의 빈 곳을 클릭해\n메모를 이동시키세요!\n\n다시 클릭하면 고정됩니다.';
-    saveBoard();
-  }
-})();
-</script>
+      function ensureAtLeastOneNote() {
+        if (!state.notes.length) {
+          const now = new Date();
+          const id = String(now.getTime());
+          const newNote = {
+            id,
+            title: "",
+            contentHtml: "",
+            updatedAt: "",
+          };
+          state.notes.push(newNote);
+          state.activeId = id;
+          saveState();
+        } else if (!state.activeId) {
+          state.activeId = state.notes[0].id;
+          saveState();
+        }
+      }
+
+      function saveActiveNote(options = {}) {
+        const { manual = false, silent = false } = options;
+        const note = getActiveNote();
+        if (!note) return;
+
+        const now = new Date();
+        note.title = titleInput.value.trim();
+        note.contentHtml = editor.innerHTML;
+        note.updatedAt = formatFullDateTime(now);
+
+        saveState();
+        renderNotesList();
+
+        if (!silent) {
+          lastSavedTime.textContent = `마지막 저장: ${note.updatedAt}`;
+          saveStatus.textContent = manual ? "수동 저장 완료" : "자동 저장됨";
+          saveStatus.style.opacity = "1";
+          setTimeout(() => {
+            saveStatus.style.opacity = "0.7";
+            saveStatus.textContent = "자동 저장 준비됨";
+          }, 1200);
+        }
+      }
+
+      function switchNote(newId) {
+        if (!newId || newId === state.activeId) return;
+        saveActiveNote({ manual: false, silent: true });
+        state.activeId = newId;
+        saveState();
+        renderNotesList();
+        renderActiveNote();
+        saveStatus.textContent = "메모 전환됨";
+        saveStatus.style.opacity = "1";
+        setTimeout(() => {
+          saveStatus.style.opacity = "0.7";
+          saveStatus.textContent = "자동 저장 준비됨";
+        }, 900);
+      }
+
+      function createNewNote(withConfirm = true) {
+        const currentNote = getActiveNote();
+        if (withConfirm && currentNote) {
+          if (currentNote.title || getPlainTextFromHtml(currentNote.contentHtml)) {
+            const ok = confirm(
+              "현재 메모 내용이 저장되었는지 확인해주세요.\n새 메모를 여시겠습니까?"
+            );
+            if (!ok) return;
+          }
+        }
+
+        saveActiveNote({ manual: false, silent: true });
+
+        const now = new Date();
+        const id = String(now.getTime());
+        const newNote = {
+          id,
+          title: "",
+          contentHtml: "",
+          updatedAt: "",
+        };
+        state.notes.unshift(newNote);
+        state.activeId = id;
+        saveState();
+        renderNotesList();
+        renderActiveNote();
+        titleInput.focus();
+      }
+
+      function clearContent() {
+        const note = getActiveNote();
+        if (!note) return;
+        if (!editor.innerHTML.trim()) return;
+        const ok = confirm("이 메모의 내용을 모두 지우시겠습니까? (제목은 유지됩니다)");
+        if (!ok) return;
+        editor.innerHTML = "";
+        updateCharCount();
+        saveActiveNote({ manual: false, silent: false });
+        saveStatus.textContent = "내용 지워짐";
+        saveStatus.style.opacity = "1";
+        setTimeout(() => {
+          saveStatus.style.opacity = "0.7";
+          saveStatus.textContent = "자동 저장 준비됨";
+        }, 900);
+      }
+
+      function deleteNoteById(id) {
+        if (!id) return;
+        const note = state.notes.find((n) => n.id === id);
+        const title = note && note.title ? note.title : "이 메모";
+        const ok = confirm(`정말로 "${title}" 를(을) 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`);
+        if (!ok) return;
+
+        state.notes = state.notes.filter((n) => n.id !== id);
+
+        if (!state.notes.length) {
+          const now = new Date();
+          const newId = String(now.getTime());
+          const newNote = {
+            id: newId,
+            title: "",
+            contentHtml: "",
+            updatedAt: "",
+          };
+          state.notes.push(newNote);
+          state.activeId = newId;
+        } else {
+          if (state.activeId === id) {
+            state.activeId = state.notes[0].id;
+          }
+        }
+
+        saveState();
+        renderNotesList();
+        renderActiveNote();
+        saveStatus.textContent = "메모가 삭제되었습니다";
+        saveStatus.style.opacity = "1";
+        setTimeout(() => {
+          saveStatus.style.opacity = "0.7";
+          saveStatus.textContent = "자동 저장 준비됨";
+        }, 900);
+      }
+
+      let autoSaveTimer = null;
+      function scheduleAutoSave() {
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => {
+          saveActiveNote({ manual: false, silent: false });
+        }, 900);
+      }
+
+      // ---- Rich Text Formatting ----
+      document.querySelectorAll(".tool-btn[data-cmd]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const cmd = btn.getAttribute("data-cmd");
+          document.execCommand(cmd, false, null);
+          editor.focus();
+        });
+      });
+
+      // 글자 크기(px) 적용: execCommand("fontSize") + font 태그를 px로 변환
+      fontSizeSelect.addEventListener("change", () => {
+        const val = fontSizeSelect.value;
+        if (!val) return;
+        const px = parseInt(val, 10);
+        if (!px) return;
+
+        // 우선 브라우저 기본 fontSize 명령(1~7단계)을 사용
+        document.execCommand("fontSize", false, "7"); // 임시로 7단계 사용
+
+        // editor 안에서 size="7"인 font 태그 찾아서 px로 바꾸기
+        const fonts = editor.querySelectorAll("font[size='7']");
+        fonts.forEach((el) => {
+          el.removeAttribute("size");
+          el.style.fontSize = px + "px";
+        });
+
+        editor.focus();
+        // 선택 초기화
+        fontSizeSelect.selectedIndex = 0;
+      });
+
+      colorForeInput.addEventListener("input", () => {
+        document.execCommand("foreColor", false, colorForeInput.value);
+        editor.focus();
+      });
+
+      colorBackInput.addEventListener("input", () => {
+        document.execCommand("hiliteColor", false, colorBackInput.value);
+        editor.focus();
+      });
+
+      btnLink.addEventListener("click", () => {
+        const url = prompt("연결할 URL을 입력하세요:", "https://");
+        if (!url) return;
+        document.execCommand("createLink", false, url);
+        editor.focus();
+      });
+
+      btnUnlink.addEventListener("click", () => {
+        document.execCommand("unlink", false, null);
+        editor.focus();
+      });
+
+      // CLR: 서식 싹 지우기 (선택된 범위가 없으면 전체)
+      btnClearFormat.addEventListener("click", () => {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+
+        // 선택이 없으면 전체 선택
+        if (sel.isCollapsed) {
+          const r = document.createRange();
+          r.selectNodeContents(editor);
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
+
+        // 기본 서식 제거 + 링크 제거
+        document.execCommand("removeFormat", false, null);
+        document.execCommand("unlink", false, null);
+
+        // editor 내부 span, font 태그 스타일 정리
+        editor.querySelectorAll("span, font").forEach((el) => {
+          el.removeAttribute("style");
+          el.removeAttribute("size");
+          // 더 이상 쓸 속성이 없고 단순 래퍼면 벗겨버리기
+          if (el.attributes.length === 0) {
+            const parent = el.parentNode;
+            while (el.firstChild) {
+              parent.insertBefore(el.firstChild, el);
+            }
+            parent.removeChild(el);
+          }
+        });
+
+        editor.focus();
+      });
+
+      // ---- 이벤트 ----
+      editor.addEventListener("input", () => {
+        updateCharCount();
+        saveStatus.textContent = "입력 중…";
+        saveStatus.style.opacity = "1";
+        scheduleAutoSave();
+      });
+
+      titleInput.addEventListener("input", () => {
+        saveStatus.textContent = "제목 수정 중…";
+        saveStatus.style.opacity = "1";
+        scheduleAutoSave();
+      });
+
+      btnSave.addEventListener("click", () => {
+        saveActiveNote({ manual: true, silent: false });
+      });
+
+      btnNew.addEventListener("click", () => {
+        createNewNote(true);
+      });
+
+      btnClear.addEventListener("click", clearContent);
+
+      btnDeleteCurrent.addEventListener("click", () => {
+        const active = getActiveNote();
+        if (!active) return;
+        deleteNoteById(active.id);
+      });
+
+      // 초기 실행
+      loadFromLocalStorage();
+      ensureAtLeastOneNote();
+      renderNotesList();
+      renderActiveNote();
+      updateCharCount();
+    })();
+  </script>
 </body>
 </html>
